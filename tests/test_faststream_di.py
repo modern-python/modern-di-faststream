@@ -5,10 +5,10 @@ import pytest
 from faststream import TestApp
 from faststream.nats import NatsBroker, TestNatsBroker
 from modern_di import Container
-from tests.dependencies import Dependencies, DependentCreator, SimpleCreator
 
 import modern_di_faststream
 from modern_di_faststream import FromDI
+from tests.dependencies import Dependencies, DependentCreator, SimpleCreator
 
 
 TEST_SUBJECT = "test"

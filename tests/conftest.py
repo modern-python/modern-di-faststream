@@ -2,9 +2,9 @@ import faststream
 import pytest
 from faststream.nats import NatsBroker
 from modern_di import Container
-from tests.dependencies import Dependencies
 
 from modern_di_faststream import setup_di
+from tests.dependencies import Dependencies
 
 
 @pytest.fixture
