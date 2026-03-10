@@ -34,7 +34,7 @@ class _DIMiddlewareFactory:
 class _DiMiddleware(faststream.BaseMiddleware, typing.Generic[P]):
     def __init__(self, di_container: Container, *args: P.args, **kwargs: P.kwargs) -> None:
         self.di_container = di_container
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        super().__init__(*args, **kwargs)
 
     async def consume_scope(
         self,
@@ -81,7 +81,7 @@ def setup_di(
     container.providers_registry.add_providers(faststream_message_provider)
     app.context.set_global("di_container", container)
     app.after_shutdown(container.close_async)
-    app.broker.add_middleware(_DIMiddlewareFactory(container))
+    app.broker.add_middleware(_DIMiddlewareFactory(container))  # type: ignore[invalid-argument-type]
     return container
 
 
