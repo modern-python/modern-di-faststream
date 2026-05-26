@@ -7,4 +7,10 @@
 
 Integration of [Modern-DI](https://github.com/modern-python/modern-di) to FastStream
 
+## Part of `modern-python`
+
+Browse the full list of templates and libraries in
+[`modern-python`](https://github.com/modern-python) — see the org profile for the
+categorized index.
+
 ## 📚 [Documentation](https://modern-di.readthedocs.io)
