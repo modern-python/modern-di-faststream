@@ -1,7 +1,6 @@
 import dataclasses
 import typing
 from collections.abc import Awaitable, Callable
-from importlib.metadata import version
 
 import faststream
 import modern_di
@@ -15,10 +14,6 @@ P = typing.ParamSpec("P")
 
 
 faststream_message_provider = providers.ContextProvider(scope=Scope.REQUEST, context_type=faststream.StreamMessage)
-
-
-_major, _minor, *_ = version("faststream").split(".")
-_OLD_MIDDLEWARES = int(_major) == 0 and int(_minor) < 6  # noqa: PLR2004
 
 
 class _DIMiddlewareFactory:
@@ -53,17 +48,9 @@ class _DiMiddleware(faststream.BaseMiddleware, typing.Generic[P]):
         finally:
             await request_container.close_async()
 
-    if _OLD_MIDDLEWARES:  # pragma: no cover
-
-        @property
-        def faststream_context(self) -> faststream.ContextRepo:
-            return typing.cast(faststream.ContextRepo, faststream.context)  # ty: ignore[possibly-missing-submodule]
-
-    else:
-
-        @property
-        def faststream_context(self) -> faststream.ContextRepo:
-            return self.context
+    @property
+    def faststream_context(self) -> faststream.ContextRepo:
+        return self.context
 
 
 def fetch_di_container(app_: faststream.FastStream | AsgiFastStream) -> Container:
