@@ -29,6 +29,7 @@ class _DIMiddlewareFactory:
 class _DiMiddleware(faststream.BaseMiddleware, typing.Generic[P]):
     def __init__(self, di_container: Container, *args: P.args, **kwargs: P.kwargs) -> None:
         self.di_container = di_container
+        # BaseMiddleware.__init__ expects (msg, /, *, context: ContextRepo); ParamSpec forwarding can't prove that.
         super().__init__(*args, **kwargs)  # ty: ignore[invalid-argument-type]
 
     async def consume_scope(
@@ -68,6 +69,7 @@ def setup_di(
     container.providers_registry.add_providers(faststream_message_provider)
     app.context.set_global("di_container", container)
     app.after_shutdown(container.close_async)
+    # _DIMiddlewareFactory.__call__ ParamSpec doesn't structurally match BrokerMiddleware[Any, Any].
     app.broker.add_middleware(_DIMiddlewareFactory(container))  # ty: ignore[invalid-argument-type]
     return container
 
