@@ -11,7 +11,61 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json)](https://github.com/astral-sh/ty)
 
-Integration of [Modern-DI](https://github.com/modern-python/modern-di) to FastStream
+[Modern-DI](https://github.com/modern-python/modern-di) integration for [FastStream](https://faststream.ag2.ai).
+
+## Installation
+
+```bash
+uv add modern-di-faststream      # or: pip install modern-di-faststream
+```
+
+## Usage
+
+`setup_di` registers the container and installs a broker middleware that builds a per-message child container; `FromDI` resolves a provider (or type) into a subscriber parameter.
+
+```python
+import dataclasses
+
+import faststream
+from faststream.nats import NatsBroker
+from modern_di import Container, Group, Scope, providers
+from modern_di_faststream import FromDI, setup_di
+
+
+@dataclasses.dataclass(kw_only=True)
+class Settings:
+    debug: bool = True
+
+
+@dataclasses.dataclass(kw_only=True)
+class GreetingHandler:
+    settings: Settings  # auto-injected by type
+
+
+class Dependencies(Group):
+    settings = providers.Factory(scope=Scope.APP, creator=Settings)
+    handler = providers.Factory(scope=Scope.REQUEST, creator=GreetingHandler)
+
+
+broker = NatsBroker()
+app = faststream.FastStream(broker)
+container = Container(groups=[Dependencies], validate=True)
+setup_di(app, container)
+
+
+@broker.subscriber("greetings")
+async def handle(name: str, handler: GreetingHandler = FromDI(Dependencies.handler)) -> None:
+    print(name, handler.settings.debug)
+```
+
+The current `StreamMessage` is resolvable within DI via the pre-built `faststream_message_provider` context provider.
+
+## API
+
+- `setup_di(app, container)` — stores the container in the app context, registers a shutdown hook, and adds the DI middleware to the broker
+- `FromDI(dependency, *, use_cache=True, cast=False)` — FastStream `Depends` that resolves a provider (or type) from the per-message child container
+- `fetch_di_container(app)` — returns the app-scoped container from the app context
+- `faststream_message_provider` — `ContextProvider` for the current `faststream.StreamMessage`
 
 ## 📦 [PyPI](https://pypi.org/project/modern-di-faststream)
 
