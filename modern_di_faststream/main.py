@@ -68,6 +68,11 @@ def setup_di(
 
     container.providers_registry.add_providers(faststream_message_provider)
     app.context.set_global("di_container", container)
+    # FastStream's lifecycle is callback-based, so the root container can't be
+    # wrapped in ``async with``. Reopen it on startup (before the broker consumes)
+    # to pair with the shutdown close, so a broker restart works instead of
+    # raising ContainerClosedError. Reopening an already-open container is a no-op.
+    app.on_startup(container.open)
     app.after_shutdown(container.close_async)
     # _DIMiddlewareFactory.__call__ ParamSpec doesn't structurally match BrokerMiddleware[Any, Any].
     app.broker.add_middleware(_DIMiddlewareFactory(container))  # ty: ignore[invalid-argument-type]
