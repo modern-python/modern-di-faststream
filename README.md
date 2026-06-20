@@ -75,3 +75,14 @@ The current `StreamMessage` is resolvable within DI via the pre-built `faststrea
 
 Browse the full list of templates and libraries in
 [`modern-python`](https://github.com/modern-python) — see the org profile for the categorized index.
+
+## modern-di ecosystem
+
+Built on [`modern-di`](https://github.com/modern-python/modern-di), a dependency-injection framework with IoC container and scopes. Integrations:
+
+- [`modern-di-fastapi`](https://github.com/modern-python/modern-di-fastapi) — FastAPI
+- [`modern-di-litestar`](https://github.com/modern-python/modern-di-litestar) — Litestar
+- [`modern-di-faststream`](https://github.com/modern-python/modern-di-faststream) — this package
+- [`modern-di-typer`](https://github.com/modern-python/modern-di-typer) — Typer
+- [`modern-di-pytest`](https://github.com/modern-python/modern-di-pytest) — pytest
+
