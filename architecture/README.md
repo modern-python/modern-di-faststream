@@ -14,7 +14,9 @@ These files carry **no frontmatter** — they are prose, dated by git.
 
 ## Capabilities
 
-_None yet — the repo authors its own capability files as changes ship._
+- [`dependency-injection.md`](dependency-injection.md) — wiring a `modern-di`
+  container into a FastStream app: `setup_di`, the per-message container seam,
+  and `FromDI` resolution.
 
 ## Promotion rule
 
