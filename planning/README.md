@@ -124,5 +124,3 @@ committed copy to drift.
 - **[decisions/](decisions/)** — design decisions taken (and alternatives
   rejected), each with a revisit trigger, so reviews don't re-litigate them;
   indexed by `just index`.
-- **[specs/](specs/)** — pre-convention design docs retained for history (e.g.
-  the FastStream 0.7 migration design).
