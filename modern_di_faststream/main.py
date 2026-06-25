@@ -41,17 +41,13 @@ class _DiMiddleware(faststream.BaseMiddleware, typing.Generic[P]):
             scope=modern_di.Scope.REQUEST, context={faststream.StreamMessage: msg}
         )
         try:
-            with self.faststream_context.scope("request_container", request_container):
+            with self.context.scope("request_container", request_container):
                 return typing.cast(
                     typing.AsyncIterator[DecodedMessage],
                     await call_next(msg),
                 )
         finally:
             await request_container.close_async()
-
-    @property
-    def faststream_context(self) -> faststream.ContextRepo:
-        return self.context
 
 
 def fetch_di_container(app_: faststream.FastStream | AsgiFastStream) -> Container:
