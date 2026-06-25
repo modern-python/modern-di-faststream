@@ -1,8 +1,8 @@
-# Design: FastStream 0.7 migration (two-PR split)
+---
+summary: Migrate modern_di_faststream from faststream>=0.5,<1 to faststream>=0.7,<0.8 in two PRs — a defensive <0.7 pin (plus build-backend swap + coverage gate), then the 0.7 break dropping the <0.6 middleware shim.
+---
 
-**Date:** 2026-06-04
-**Status:** Approved
-**Slug:** `faststream-0.7-migration`
+# Design: FastStream 0.7 migration (two-PR split)
 
 ## Summary
 
