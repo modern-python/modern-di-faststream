@@ -8,7 +8,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/modern-di-faststream.svg)](https://pypi.org/project/modern-di-faststream/)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/modern-di-faststream.svg)](https://pypi.org/project/modern-di-faststream/)
-[![Downloads](https://img.shields.io/pypi/dm/modern-di-faststream.svg)](https://pypistats.org/packages/modern-di-faststream)
+[![Downloads](https://static.pepy.tech/badge/modern-di-faststream/month)](https://pepy.tech/projects/modern-di-faststream)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/modern-python/modern-di-faststream/actions/workflows/ci.yml)
 [![CI](https://github.com/modern-python/modern-di-faststream/actions/workflows/ci.yml/badge.svg)](https://github.com/modern-python/modern-di-faststream/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/modern-python/modern-di-faststream.svg)](https://github.com/modern-python/modern-di-faststream/blob/main/LICENSE)
