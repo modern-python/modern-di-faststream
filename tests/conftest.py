@@ -10,5 +10,5 @@ from tests.dependencies import Dependencies
 @pytest.fixture
 async def app() -> faststream.FastStream:
     app_ = faststream.FastStream(NatsBroker())
-    setup_di(app_, container=Container(groups=[Dependencies]))
+    setup_di(app_, container=Container(groups=[Dependencies], validate=True))
     return app_
