@@ -68,7 +68,7 @@ def setup_di(
         msg = "Broker must be defined to setup DI"
         raise RuntimeError(msg)
 
-    container.providers_registry.add_providers(faststream_message_provider)
+    container.add_providers(faststream_message_provider)
     app.context.set_global(_ROOT_CONTAINER_KEY, container)
     # FastStream's lifecycle is callback-based, so the root container can't be
     # wrapped in ``async with``. Reopen it on startup (before the broker consumes)
@@ -87,9 +87,7 @@ class Dependency(typing.Generic[T_co]):
 
     async def __call__(self, context: faststream.ContextRepo) -> T_co:
         request_container: Container = context.get(_REQUEST_CONTAINER_KEY)
-        if isinstance(self.dependency, providers.AbstractProvider):
-            return request_container.resolve_provider(self.dependency)
-        return request_container.resolve(dependency_type=self.dependency)
+        return request_container.resolve_dependency(self.dependency)
 
 
 def FromDI(  # noqa: N802
