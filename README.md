@@ -19,6 +19,8 @@
 
 [Modern-DI](https://github.com/modern-python/modern-di) integration for [FastStream](https://faststream.ag2.ai).
 
+Full guide: [FastStream integration docs](https://modern-di.modern-python.org/integrations/faststream/)
+
 ## Installation
 
 ```bash
