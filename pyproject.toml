@@ -17,7 +17,7 @@ classifiers = [
     "Typing :: Typed",
     "Topic :: Software Development :: Libraries",
 ]
-dependencies = ["faststream>=0.7,<0.8", "modern-di>=2.25,<3"]
+dependencies = ["faststream>=0.7,<0.8", "modern-di>=2.28,<3"]
 version = "0"
 
 [project.urls]
