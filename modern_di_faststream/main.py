@@ -80,14 +80,17 @@ def setup_di(
 
 @dataclasses.dataclass(slots=True, frozen=True)
 class Dependency(typing.Generic[T_co]):
-    dependency: providers.AbstractProvider[T_co] | type[T_co]
+    marker: integrations.Marker[T_co]
 
     async def __call__(self, context: faststream.ContextRepo) -> T_co:
         request_container: Container = context.get(_REQUEST_CONTAINER_KEY)
-        return request_container.resolve_dependency(self.dependency)
+        return self.marker.resolve(request_container)
 
 
 def FromDI(  # noqa: N802
     dependency: providers.AbstractProvider[T_co] | type[T_co], *, use_cache: bool = True, cast: bool = False
 ) -> T_co:
-    return typing.cast(T_co, faststream.Depends(dependency=Dependency(dependency), use_cache=use_cache, cast=cast))
+    return typing.cast(
+        T_co,
+        faststream.Depends(dependency=Dependency(integrations.Marker(dependency)), use_cache=use_cache, cast=cast),
+    )
