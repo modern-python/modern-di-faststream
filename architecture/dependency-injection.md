@@ -41,24 +41,41 @@ container ahead of FastStream's deferred middleware construction — see
 [the decision to keep the two-class split][d-factory]) runs `consume_scope` on
 every message:
 
-1. `build_child_container(scope=REQUEST, context={StreamMessage: msg})` — a
-   child container seeded with the current message.
-2. Scopes it into `ContextRepo` under `_REQUEST_CONTAINER_KEY` for the duration
-   of the call.
-3. Closes the child in a `finally`, so per-message resources never leak even if
-   the handler raises.
+1. `modern_di.integrations.bind(faststream_message_provider, msg)` derives the
+   child's scope and context from the message — `bind(provider, connection)`
+   returns `ConnectionMatch(scope=provider.scope,
+   context={provider.context_type: connection})`, so this always produces
+   `scope=REQUEST, context={StreamMessage: msg}`, the same values the code
+   used to hand-write. FastStream is broker-agnostic through this one message
+   type, so there is only ever one provider to derive from —
+   `classify_connection` (which dispatches across several providers) has
+   nothing to dispatch across here.
+2. `self.di_container.build_child_container(scope=match.scope,
+   context=match.context)` builds the child, opened via `Container`'s own
+   `async with` — entering an already-open container is a no-op; exiting
+   closes it, including on the exception path. This replaces the old manual
+   `try`/`finally: await request_container.close_async()`.
+3. Inside that block, a plain sync `with
+   self.context.scope(_REQUEST_CONTAINER_KEY, request_container):` still
+   scopes the child into `ContextRepo` for the duration of the call —
+   `ContextRepo.scope` is not an async context manager, so the two blocks
+   nest rather than combine into one `async with A, B:` statement.
 
 ## Resolution
 
 `FromDI(dependency, *, use_cache=True, cast=False)` returns a FastStream
-`Depends` wrapping a `Dependency` instance. At resolution time `Dependency`
-reads the request container out of `ContextRepo` and resolves through it:
+`Depends` wrapping a `Dependency` instance holding a
+`modern_di.integrations.Marker(dependency)`. At resolution time `Dependency`
+reads the request container out of `ContextRepo` and calls
+`self.marker.resolve(request_container)`, which is
+`container.resolve_dependency(self.dependency)` under the hood — dispatching
+to:
 
 - an `AbstractProvider` → `resolve_provider(...)`,
 - a bare `type` → `resolve(dependency_type=...)`.
 
-`Dependency` is the deep part of this seam — the provider-vs-type branch and the
-container lookup sit behind a single `__call__`. `FromDI` is just its
+`Dependency` is the deep part of this seam — the container lookup and the
+`Marker` delegation sit behind a single `__call__`. `FromDI` is just its
 constructor.
 
 ## Lifecycle note
