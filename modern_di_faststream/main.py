@@ -3,10 +3,9 @@ import typing
 from collections.abc import Awaitable, Callable
 
 import faststream
-import modern_di
 from faststream.asgi import AsgiFastStream
 from faststream.types import DecodedMessage
-from modern_di import Container, Scope, providers
+from modern_di import Container, Scope, integrations, providers
 
 
 T_co = typing.TypeVar("T_co", covariant=True)
@@ -43,17 +42,15 @@ class _DiMiddleware(faststream.BaseMiddleware, typing.Generic[P]):
         call_next: Callable[[typing.Any], Awaitable[typing.Any]],
         msg: faststream.StreamMessage[typing.Any],
     ) -> typing.AsyncIterator[DecodedMessage]:
-        request_container = self.di_container.build_child_container(
-            scope=modern_di.Scope.REQUEST, context={faststream.StreamMessage: msg}
-        )
-        try:
+        match = integrations.bind(faststream_message_provider, msg)
+        async with self.di_container.build_child_container(
+            scope=match.scope, context=match.context
+        ) as request_container:
             with self.context.scope(_REQUEST_CONTAINER_KEY, request_container):
                 return typing.cast(
                     typing.AsyncIterator[DecodedMessage],
                     await call_next(msg),
                 )
-        finally:
-            await request_container.close_async()
 
 
 def fetch_di_container(app_: faststream.FastStream | AsgiFastStream) -> Container:
@@ -83,14 +80,17 @@ def setup_di(
 
 @dataclasses.dataclass(slots=True, frozen=True)
 class Dependency(typing.Generic[T_co]):
-    dependency: providers.AbstractProvider[T_co] | type[T_co]
+    marker: integrations.Marker[T_co]
 
     async def __call__(self, context: faststream.ContextRepo) -> T_co:
         request_container: Container = context.get(_REQUEST_CONTAINER_KEY)
-        return request_container.resolve_dependency(self.dependency)
+        return self.marker.resolve(request_container)
 
 
 def FromDI(  # noqa: N802
     dependency: providers.AbstractProvider[T_co] | type[T_co], *, use_cache: bool = True, cast: bool = False
 ) -> T_co:
-    return typing.cast(T_co, faststream.Depends(dependency=Dependency(dependency), use_cache=use_cache, cast=cast))
+    return typing.cast(
+        T_co,
+        faststream.Depends(dependency=Dependency(integrations.Marker(dependency)), use_cache=use_cache, cast=cast),
+    )
