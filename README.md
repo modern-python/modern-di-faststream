@@ -21,6 +21,8 @@
 
 Full guide: [FastStream integration docs](https://modern-di.modern-python.org/integrations/faststream/)
 
+Usage example: [examples/](./examples)
+
 ## Installation
 
 ```bash
