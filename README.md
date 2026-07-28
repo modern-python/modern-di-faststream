@@ -59,8 +59,9 @@ class Dependencies(Group):
 
 broker = NatsBroker()
 app = faststream.FastStream(broker)
-container = Container(groups=[Dependencies], validate=True)
+container = Container(groups=[Dependencies])
 setup_di(app, container)
+container.validate()  # optional fail-fast; must come after setup_di registers its providers
 
 
 @broker.subscriber("greetings")
