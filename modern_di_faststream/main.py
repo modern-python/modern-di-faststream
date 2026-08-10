@@ -9,7 +9,6 @@ from modern_di import Container, Scope, integrations, providers
 
 
 T_co = typing.TypeVar("T_co", covariant=True)
-P = typing.ParamSpec("P")
 
 
 faststream_message_provider = providers.ContextProvider(scope=Scope.REQUEST, context_type=faststream.StreamMessage)
@@ -27,15 +26,14 @@ class _DIMiddlewareFactory:
     def __init__(self, di_container: Container) -> None:
         self.di_container = di_container
 
-    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> "_DiMiddleware[P]":
-        return _DiMiddleware(self.di_container, *args, **kwargs)
+    def __call__(self, msg: object, /, *, context: faststream.ContextRepo) -> "_DiMiddleware":
+        return _DiMiddleware(self.di_container, msg, context=context)
 
 
-class _DiMiddleware(faststream.BaseMiddleware, typing.Generic[P]):
-    def __init__(self, di_container: Container, *args: P.args, **kwargs: P.kwargs) -> None:
+class _DiMiddleware(faststream.BaseMiddleware):
+    def __init__(self, di_container: Container, msg: object, /, *, context: faststream.ContextRepo) -> None:
         self.di_container = di_container
-        # BaseMiddleware.__init__ expects (msg, /, *, context: ContextRepo); ParamSpec forwarding can't prove that.
-        super().__init__(*args, **kwargs)  # ty: ignore[invalid-argument-type]
+        super().__init__(msg, context=context)
 
     async def consume_scope(
         self,
@@ -73,8 +71,7 @@ def setup_di(
     # raising ContainerClosedError. Reopening an already-open container is a no-op.
     app.on_startup(container.open)
     app.after_shutdown(container.close_async)
-    # _DIMiddlewareFactory.__call__ ParamSpec doesn't structurally match BrokerMiddleware[Any, Any].
-    app.broker.add_middleware(_DIMiddlewareFactory(container))  # ty: ignore[invalid-argument-type]
+    app.broker.add_middleware(_DIMiddlewareFactory(container))
     return container
 
 

@@ -39,7 +39,16 @@ is a `NameError` at import, not a silent runtime miss.
 `_DiMiddleware` (constructed by `_DIMiddlewareFactory`, which binds the
 container ahead of FastStream's deferred middleware construction — see
 [the decision to keep the two-class split][d-factory]) runs `consume_scope` on
-every message:
+every message.
+
+The factory declares FastStream's construction contract literally —
+`__call__(msg, /, *, context: ContextRepo) -> _DiMiddleware`, mirrored on
+`_DiMiddleware.__init__` — so `broker.add_middleware(_DIMiddlewareFactory(...))`
+is checked against the `BrokerMiddleware` protocol at type-check time. That
+call site is the package's guard against FastStream changing the contract
+underneath it: a mismatch is a `ty` error, not a first-message runtime failure.
+
+On each message the middleware:
 
 1. `modern_di.integrations.bind(faststream_message_provider, msg)` derives the
    child's scope and context from the message — `bind(provider, connection)`
