@@ -31,7 +31,7 @@ uv add modern-di-faststream      # or: pip install modern-di-faststream
 
 ## Usage
 
-`setup_di` registers the container and installs a broker middleware that builds a per-message child container; `FromDI` resolves a provider (or type) into a subscriber parameter.
+`setup_di` registers the root container and installs a broker middleware that builds a request container per message; `FromDI` resolves a provider (or type) into a subscriber parameter.
 
 ```python
 import dataclasses
@@ -74,8 +74,8 @@ The current `StreamMessage` is resolvable within DI via the pre-built `faststrea
 ## API
 
 - `setup_di(app, container)` — stores the container in the app context, registers startup/shutdown lifecycle hooks (reopen on startup, close after shutdown), and adds the DI middleware to the broker
-- `FromDI(dependency, *, use_cache=True, cast=False)` — FastStream `Depends` that resolves a provider (or type) from the per-message child container
-- `fetch_di_container(app)` — returns the app-scoped container from the app context
+- `FromDI(dependency, *, use_cache=True, cast=False)` — FastStream `Depends` that resolves a provider (or type) from the request container
+- `fetch_di_container(app)` — returns the root container from the app context
 - `faststream_message_provider` — `ContextProvider` for the current `faststream.StreamMessage`
 
 ## 📦 [PyPI](https://pypi.org/project/modern-di-faststream)
