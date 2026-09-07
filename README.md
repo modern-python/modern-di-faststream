@@ -21,7 +21,7 @@
 
 Full guide: [FastStream integration docs](https://modern-di.modern-python.org/integrations/faststream/)
 
-Usage example: [examples/](./examples)
+Usage example: [examples/](https://github.com/modern-python/modern-di-faststream/tree/main/examples)
 
 ## Installation
 
@@ -80,7 +80,7 @@ The current `StreamMessage` is resolvable within DI via the pre-built `faststrea
 
 ## 📦 [PyPI](https://pypi.org/project/modern-di-faststream)
 
-## 📝 [License](LICENSE)
+## 📝 [License](https://github.com/modern-python/modern-di-faststream/blob/main/LICENSE)
 
 ## Part of `modern-python`
 
