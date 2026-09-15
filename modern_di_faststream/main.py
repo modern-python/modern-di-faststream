@@ -89,7 +89,13 @@ class Dependency(typing.Generic[T_co]):
     marker: integrations.Marker[T_co]
 
     async def __call__(self, context: faststream.ContextRepo) -> T_co:
-        request_container: Container = context.get(_REQUEST_CONTAINER_KEY)
+        request_container: Container | None = context.get(_REQUEST_CONTAINER_KEY)
+        if request_container is None:
+            msg = (
+                "No modern-di container found for this message. "
+                "Call setup_di(app, container) so messages pass through the modern-di middleware before using FromDI."
+            )
+            raise RuntimeError(msg)
         return self.marker.resolve(request_container)
 
 

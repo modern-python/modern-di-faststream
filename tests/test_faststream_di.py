@@ -111,3 +111,22 @@ async def test_middleware_is_installed_once_per_broker_across_restarts() -> None
     for broker in (first, second):
         installed = [m for m in broker.config.broker_middlewares if isinstance(m, _DIMiddlewareFactory)]
         assert len(installed) == 1
+
+
+async def test_from_di_without_setup_di_raises_clear_error() -> None:
+    """INVARIANT: a ``FromDI`` parameter on an app that never called ``setup_di`` names the fix.
+
+    Without ``setup_di`` no middleware runs, so no request container is in the ``ContextRepo``.
+    Broken by resolving against whatever ``context.get`` returns: the failure is then an
+    ``AttributeError`` on ``None`` deep in the resolve, which says nothing about ``setup_di``.
+    """
+    broker = NatsBroker()
+    app_ = faststream.FastStream(broker)
+    resolved: list[SimpleCreator] = []
+    _subscribe_resolving(broker, TEST_SUBJECT, resolved)
+
+    async with TestNatsBroker(broker) as br, TestApp(app_):
+        with pytest.raises(RuntimeError, match=r"setup_di\(app, container\)"):
+            await br.publish(None, TEST_SUBJECT)
+
+    assert resolved == []
