@@ -111,3 +111,35 @@ async def test_middleware_is_installed_once_per_broker_across_restarts() -> None
     for broker in (first, second):
         installed = [m for m in broker.config.broker_middlewares if isinstance(m, _DIMiddlewareFactory)]
         assert len(installed) == 1
+
+
+def _subscribe_with_from_di(broker: NatsBroker, subject: str) -> None:
+    @broker.subscriber(subject)
+    async def subscriber(instance: typing.Annotated[SimpleCreator, FromDI(Dependencies.app_factory)]) -> None:
+        """Never reached: resolving ``instance`` fails first."""
+
+
+async def test_from_di_without_setup_di_names_the_missing_step() -> None:
+    """INVARIANT: ``FromDI`` on a message the DI middleware never saw fails by naming ``setup_di``.
+
+    Broken by handing ``ContextRepo.get``'s ``None`` straight to the marker, which surfaces as
+    modern-di's ``AttributeError: 'NoneType' object has no attribute 'resolve_dependency'`` and
+    points at nothing in this package.
+    """
+    broker = NatsBroker()
+    app_ = faststream.FastStream(broker)
+    _subscribe_with_from_di(broker, TEST_SUBJECT)
+
+    async with TestNatsBroker(broker) as br, TestApp(app_):
+        with pytest.raises(RuntimeError, match="setup_di"):
+            await br.publish(None, TEST_SUBJECT)
+
+
+async def test_from_di_on_an_app_never_started_names_the_missing_step(app: faststream.FastStream) -> None:
+    """The middleware is installed on startup, so a test broker entered without ``TestApp`` has none."""
+    broker = typing.cast(NatsBroker, app.broker)
+    _subscribe_with_from_di(broker, TEST_SUBJECT)
+
+    async with TestNatsBroker(broker) as br:
+        with pytest.raises(RuntimeError, match="TestApp"):
+            await br.publish(None, TEST_SUBJECT)
