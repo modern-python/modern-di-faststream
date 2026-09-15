@@ -30,9 +30,14 @@ from, rather than a private record of installed brokers that could drift from it
 Between `setup_di` and startup the middleware is not yet on any broker. Nothing in this package,
 its tests, or its documentation inspects a broker in that window; `TestApp` runs the startup hooks.
 
-The `if not app.broker` guard in `setup_di` is kept as it was. Relaxing it so that a broker
-created inside the user's own `on_startup` hook can be picked up is possible, since hooks run in
-registration order, but that ordering is subtle enough to want its own decision.
+`setup_di` no longer requires a broker at call time. The original version of this decision kept
+the `if not app.broker` guard; [#56](https://github.com/modern-python/modern-di-faststream/issues/56)
+dropped it so that a broker created inside the user's own `on_startup` hook is covered, because the
+broker list is read at startup anyway. Hooks run in registration order, so that hook must be
+registered before `setup_di`; the install hook raises when the list is still empty when it runs,
+naming both remedies, and the message-time error from `FromDI` names the other order. A broker
+that a later hook adds while another broker already exists is the one case that still surfaces at
+message time.
 
 **Revisit trigger:** FastStream exposes a hook for a broker being added to an app, so the
 middleware can be installed at that moment instead of on startup, **or** FastStream freezes a

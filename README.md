@@ -73,7 +73,7 @@ The current `StreamMessage` is resolvable within DI via the pre-built `faststrea
 
 ## API
 
-- `setup_di(app, container)` — stores the container in the app context and registers startup/shutdown lifecycle hooks: on startup it reopens the container and adds the DI middleware to every broker of the app (including one added via `app.add_broker` after `setup_di`), after shutdown it closes the container
+- `setup_di(app, container)` — stores the container in the app context and registers startup/shutdown lifecycle hooks: on startup it reopens the container and adds the DI middleware to every broker of the app (including one added via `app.add_broker` after `setup_di`, or by an `on_startup` hook registered before `setup_di`), after shutdown it closes the container. Raises at startup if the app has no broker by then
 - `FromDI(dependency, *, use_cache=True, cast=False)` — FastStream `Depends` that resolves a provider (or type) from the request container. Raises `RuntimeError` naming `setup_di` when a message reaches it without the middleware installed
 - `fetch_di_container(app)` — returns the root container from the app context
 - `faststream_message_provider` — `ContextProvider` for the current `faststream.StreamMessage`
