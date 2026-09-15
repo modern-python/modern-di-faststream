@@ -22,7 +22,13 @@ _REQUEST_CONTAINER_KEY = "request_container"
 _MISSING_REQUEST_CONTAINER = (
     "No request container for this message, so the DI middleware did not run for it. "
     "Call setup_di(app, container) on the app that owns this broker and start the app; "
-    "in tests, pair the test broker with TestApp(app) in the same `async with`."
+    "in tests, pair the test broker with TestApp(app) in the same `async with`. "
+    "A broker added by an on_startup hook is covered only if that hook was registered before setup_di."
+)
+_NO_BROKER_AT_STARTUP = (
+    "No broker on the app when the DI middleware is installed at startup. "
+    "Pass one to FastStream(...) or app.add_broker(...) before startup; "
+    "an on_startup hook that adds it must be registered before setup_di, since hooks run in registration order."
 )
 
 
@@ -65,10 +71,6 @@ def setup_di(
     app: faststream.FastStream | AsgiFastStream,
     container: Container,
 ) -> Container:
-    if not app.broker:
-        msg = "Broker must be defined to setup DI"
-        raise RuntimeError(msg)
-
     container.add_providers(faststream_message_provider)
     app.context.set_global(_ROOT_CONTAINER_KEY, container)
     middleware_factory = _DIMiddlewareFactory(container)
@@ -76,6 +78,8 @@ def setup_di(
     # Installed on startup rather than here so a broker added after ``setup_di`` is covered,
     # and skipped where present so a restart adds no second copy: docs/adr/0002-install-middleware-on-startup.md
     def install_middleware() -> None:
+        if not app.brokers:
+            raise RuntimeError(_NO_BROKER_AT_STARTUP)
         for broker in app.brokers:
             if middleware_factory not in broker.config.broker_middlewares:
                 broker.add_middleware(middleware_factory)

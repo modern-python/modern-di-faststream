@@ -48,9 +48,38 @@ async def test_context_adapter(app: faststream.FastStream) -> None:
         assert result_str == b""
 
 
-async def test_app_without_broker() -> None:
-    with pytest.raises(RuntimeError, match="Broker must be defined to setup DI"):
-        modern_di_faststream.setup_di(faststream.FastStream(), container=Container())
+async def test_broker_added_by_a_startup_hook_registered_before_setup_di_gets_di() -> None:
+    """INVARIANT: ``setup_di`` accepts an app whose broker is created in an ``on_startup`` hook.
+
+    Broken by refusing an app with no broker at ``setup_di`` time, or by installing the middleware
+    anywhere but a startup hook registered by ``setup_di`` itself: hooks run in registration order,
+    so the user's ``add_broker`` hook has run by the time the install hook reads ``app.brokers``.
+    FastStream documents this shape (``set_broker``: "create/init broker in ``on_startup`` hook").
+    """
+    broker = NatsBroker()
+    app_ = faststream.FastStream()
+    resolved: list[SimpleCreator] = []
+
+    @app_.on_startup
+    async def attach_broker() -> None:
+        app_.add_broker(broker)
+
+    modern_di_faststream.setup_di(app_, container=Container(groups=[Dependencies]))
+    _subscribe_resolving(broker, TEST_SUBJECT, resolved)
+
+    async with TestNatsBroker(broker) as br, TestApp(app_):
+        await br.publish(None, TEST_SUBJECT)
+
+    assert [type(instance) for instance in resolved] == [SimpleCreator]
+
+
+async def test_app_without_broker_at_startup_names_both_remedies() -> None:
+    """The empty broker list is reported when the install hook runs, before FastStream's own assert."""
+    app_ = faststream.FastStream()
+    modern_di_faststream.setup_di(app_, container=Container())
+
+    with pytest.raises(RuntimeError, match=r"add_broker.*before setup_di"):
+        await app_.start()
 
 
 def test_fetch_di_container(app: faststream.FastStream) -> None:
