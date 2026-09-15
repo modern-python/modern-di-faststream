@@ -65,13 +65,22 @@ def setup_di(
 
     container.add_providers(faststream_message_provider)
     app.context.set_global(_ROOT_CONTAINER_KEY, container)
+    middleware_factory = _DIMiddlewareFactory(container)
+
+    # Installed on startup rather than here so a broker added after ``setup_di`` is covered,
+    # and skipped where present so a restart adds no second copy: docs/adr/0002-install-middleware-on-startup.md
+    def install_middleware() -> None:
+        for broker in app.brokers:
+            if middleware_factory not in broker.config.broker_middlewares:
+                broker.add_middleware(middleware_factory)
+
     # FastStream's lifecycle is callback-based, so the root container can't be
     # wrapped in ``async with``. Reopen it on startup (before the broker consumes)
     # to pair with the shutdown close, so a broker restart works instead of
     # raising ContainerClosedError. Reopening an already-open container is a no-op.
     app.on_startup(container.open)
+    app.on_startup(install_middleware)
     app.after_shutdown(container.close_async)
-    app.broker.add_middleware(_DIMiddlewareFactory(container))
     return container
 
 

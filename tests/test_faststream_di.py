@@ -8,6 +8,7 @@ from modern_di import Container
 
 import modern_di_faststream
 from modern_di_faststream import FromDI
+from modern_di_faststream.main import _DIMiddlewareFactory
 from tests.dependencies import Dependencies, DependentCreator, SimpleCreator
 
 
@@ -55,3 +56,58 @@ async def test_app_without_broker() -> None:
 def test_fetch_di_container(app: faststream.FastStream) -> None:
     di_container = modern_di_faststream.fetch_di_container(app)
     assert isinstance(di_container, Container)
+
+
+def _app_with_two_brokers(*, add_second_after_setup: bool) -> tuple[faststream.FastStream, NatsBroker, NatsBroker]:
+    first, second = NatsBroker(), NatsBroker()
+    app_ = faststream.FastStream(first) if add_second_after_setup else faststream.FastStream(first, second)
+    modern_di_faststream.setup_di(app_, container=Container(groups=[Dependencies]))
+    if add_second_after_setup:
+        app_.add_broker(second)
+    return app_, first, second
+
+
+def _subscribe_resolving(broker: NatsBroker, subject: str, resolved: list[SimpleCreator]) -> None:
+    @broker.subscriber(subject)
+    async def subscriber(instance: typing.Annotated[SimpleCreator, FromDI(Dependencies.app_factory)]) -> None:
+        resolved.append(instance)
+
+
+@pytest.mark.parametrize("add_second_after_setup", [False, True], ids=["at-construction", "after-setup_di"])
+async def test_di_resolves_on_every_broker(add_second_after_setup: bool) -> None:
+    """INVARIANT: a ``FromDI`` parameter resolves on every broker of the app, not only ``app.broker``.
+
+    Broken by installing the middleware on ``app.broker`` alone, or by installing it when
+    ``setup_di`` runs instead of on startup: FastStream 0.7 apps hold a list of brokers, and
+    ``app.add_broker`` may append to it after ``setup_di`` returned. Either regression is silent at
+    setup and surfaces as a missing request container on the first message to the other broker.
+    """
+    app_, first, second = _app_with_two_brokers(add_second_after_setup=add_second_after_setup)
+    resolved: list[SimpleCreator] = []
+    _subscribe_resolving(first, "first", resolved)
+    _subscribe_resolving(second, "second", resolved)
+
+    async with TestNatsBroker(first, second) as (first_test, second_test), TestApp(app_):
+        await first_test.publish(None, "first")
+        await second_test.publish(None, "second")
+
+    assert [type(instance) for instance in resolved] == [SimpleCreator, SimpleCreator]
+
+
+async def test_middleware_is_installed_once_per_broker_across_restarts() -> None:
+    """INVARIANT: each broker carries exactly one DI middleware however many times the app starts.
+
+    Broken by a startup hook that adds the middleware unconditionally. Every start after the first
+    would then add another copy, and each message would build one request container per copy,
+    with only the innermost visible to ``FromDI``.
+    """
+    app_, first, second = _app_with_two_brokers(add_second_after_setup=False)
+
+    async with TestNatsBroker(first, second), TestApp(app_):
+        pass
+    async with TestNatsBroker(first, second), TestApp(app_):
+        pass
+
+    for broker in (first, second):
+        installed = [m for m in broker.config.broker_middlewares if isinstance(m, _DIMiddlewareFactory)]
+        assert len(installed) == 1
