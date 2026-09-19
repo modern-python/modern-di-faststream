@@ -33,5 +33,14 @@ description, and PyPI does not rewrite relative links, so a relative one 404s on
 
 ## Agent skills
 
-- **Domain docs** — single-context, `CONTEXT.md` + `docs/adr/`:
-  [`docs/agents/domain.md`](docs/agents/domain.md)
+### Issue tracker
+
+GitHub issues on `modern-python/modern-di-faststream`, via `gh`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
