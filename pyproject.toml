@@ -21,8 +21,8 @@ classifiers = [
 dependencies = [
     "faststream>=0.7,<0.8",
     # Not imported here: faststream pulls pydantic, and pydantic-core ships no cp313 wheel
-    # before pydantic 2.8 and no cp314 wheel before 2.12 - the floor cannot install there.
-    "pydantic>=2.8; python_version == '3.13'",
+    # before pydantic 2.8.1 and no cp314 wheel before 2.12 - the floor cannot install there.
+    "pydantic>=2.8.1; python_version == '3.13'",
     "pydantic>=2.12; python_version >= '3.14'",
     "modern-di>=3,<4",
 ]
