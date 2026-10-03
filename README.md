@@ -73,10 +73,12 @@ The current `StreamMessage` is resolvable within DI via the pre-built `faststrea
 
 ## API
 
-- `setup_di(app, container)` — stores the container in the app context and registers startup/shutdown lifecycle hooks: on startup it reopens the container and adds the DI middleware to every broker of the app (including one added via `app.add_broker` after `setup_di`, or by an `on_startup` hook registered before `setup_di`), after shutdown it closes the container. Raises at startup if the app has no broker by then
-- `FromDI(dependency, *, use_cache=True, cast=False)` — FastStream `Depends` that resolves a provider (or type) from the request container. Raises `RuntimeError` naming `setup_di` when a message reaches it without the middleware installed
-- `fetch_di_container(app)` — returns the root container from the app context
-- `faststream_message_provider` — `ContextProvider` for the current `faststream.StreamMessage`
+| Symbol | Description |
+|---|---|
+| `setup_di(app, container)` | Stores the container in the app context and registers startup/shutdown lifecycle hooks. On startup it reopens the container and adds the DI middleware to every broker of the app, including one added via `app.add_broker` after `setup_di` or by an `on_startup` hook registered before `setup_di`. After shutdown it closes the container. Raises `RuntimeError` at startup if the app has no broker by then. Returns the container |
+| `FromDI(dependency, *, use_cache=True, cast=False)` | FastStream `Depends` that resolves a provider (or type) from the request container. Raises `RuntimeError` naming `setup_di` when a message reaches it without the middleware installed |
+| `fetch_di_container(app)` | Returns the root container from the app context |
+| `faststream_message_provider` | `ContextProvider` for the current `faststream.StreamMessage` (`REQUEST` scope) |
 
 ## 📦 [PyPI](https://pypi.org/project/modern-di-faststream)
 
@@ -84,7 +86,7 @@ The current `StreamMessage` is resolvable within DI via the pre-built `faststrea
 
 ## Part of `modern-python`
 
-Built on [`modern-di`](https://github.com/modern-python/modern-di), a dependency-injection framework with IoC container and scopes.
+Built on [`modern-di`](https://github.com/modern-python/modern-di), a dependency-injection framework with an IoC container and scopes.
 
 Browse the full list of templates and libraries in
-[`modern-python`](https://github.com/modern-python) — see the org profile for the categorized index.
+[`modern-python`](https://github.com/modern-python); the org profile has the categorized index.
