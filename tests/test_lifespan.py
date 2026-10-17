@@ -1,7 +1,10 @@
 import typing
+from collections.abc import Callable
 
 import faststream
+import pytest
 from faststream import TestApp
+from faststream.asgi import AsgiFastStream
 from faststream.nats import NatsBroker, TestNatsBroker
 from modern_di import Container
 
@@ -95,3 +98,51 @@ async def test_manage_lifespan_false_lets_the_user_own_the_root() -> None:
 
     assert container.closed
     assert app_instance.finalized == 1
+
+
+class _CloseCountingContainer(Container):
+    close_calls = 0
+
+    async def close_async(self) -> None:
+        self.close_calls += 1
+        await super().close_async()
+
+
+def _setup_on_faststream(broker: NatsBroker, container: Container) -> faststream.FastStream | AsgiFastStream:
+    app = faststream.FastStream(broker)
+    setup_di(app, container)
+    return app
+
+
+def _setup_on_asgi(broker: NatsBroker, container: Container) -> faststream.FastStream | AsgiFastStream:
+    app = AsgiFastStream(broker)
+    setup_di(app, container)
+    return app
+
+
+def _setup_then_as_asgi(broker: NatsBroker, container: Container) -> faststream.FastStream | AsgiFastStream:
+    app = faststream.FastStream(broker)
+    setup_di(app, container)
+    return app.as_asgi()
+
+
+@pytest.mark.parametrize("build_app", [_setup_on_faststream, _setup_on_asgi, _setup_then_as_asgi])
+async def test_after_shutdown_hook_registered_after_setup_di_sees_the_open_root(
+    build_app: Callable[[NatsBroker, Container], faststream.FastStream | AsgiFastStream],
+) -> None:
+    broker = NatsBroker()
+    container = _CloseCountingContainer(groups=[Dependencies])
+    app = build_app(broker, container)
+    seen: list[tuple[Finalizable, int]] = []
+
+    @app.after_shutdown
+    def user_hook() -> None:
+        instance = container.resolve_provider(Dependencies.app_finalizable)
+        seen.append((instance, instance.finalized))
+
+    for cycle in (1, 2):
+        async with TestNatsBroker(broker), TestApp(app):
+            pass
+        assert [(instance.finalized, at_hook) for instance, at_hook in seen] == [(1, 0)] * cycle
+        assert container.closed
+        assert container.close_calls == cycle
