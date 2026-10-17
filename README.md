@@ -71,11 +71,27 @@ async def handle(name: str, handler: GreetingHandler = FromDI(Dependencies.handl
 
 The current `StreamMessage` is resolvable within DI via the pre-built `faststream_message_provider` context provider.
 
+### Sharing a container
+
+By default the app opens the container on startup and closes it after shutdown, which runs every `APP`-scoped finalizer. When the container outlives the app, or other apps share it, pass `manage_lifespan=False` and open and close it yourself:
+
+```python
+container = Container(groups=[Dependencies])
+setup_di(app, container, manage_lifespan=False)
+
+
+async def main() -> None:
+    async with container:
+        await app.run()
+```
+
+When several apps share one container, exactly one of them should own its lifespan, or the first app to stop closes the container for the rest.
+
 ## API
 
 | Symbol | Description |
 |---|---|
-| `setup_di(app, container)` | Stores the container in the app context and registers startup/shutdown lifecycle hooks. On startup it reopens the container and adds the DI middleware to every broker of the app, including one added via `app.add_broker` after `setup_di` or by an `on_startup` hook registered before `setup_di`. After shutdown it closes the container. Raises `RuntimeError` at startup if the app has no broker by then. Returns the container |
+| `setup_di(app, container, *, manage_lifespan=True)` | Stores the container in the app context and registers startup/shutdown lifecycle hooks. On startup it reopens the container and adds the DI middleware to every broker of the app, including one added via `app.add_broker` after `setup_di` or by an `on_startup` hook registered before `setup_di`. After shutdown it closes the container. With `manage_lifespan=False` it never opens or closes the container, and the middleware still builds and closes a request container per message. Raises `RuntimeError` at startup if the app has no broker by then. Returns the container |
 | `FromDI(dependency, *, use_cache=True, cast=False)` | FastStream `Depends` that resolves a provider (or type) from the request container. Raises `RuntimeError` naming `setup_di` when a message reaches it without the middleware installed |
 | `fetch_di_container(app)` | Returns the root container from the app context |
 | `faststream_message_provider` | `ContextProvider` for the current `faststream.StreamMessage` (`REQUEST` scope) |

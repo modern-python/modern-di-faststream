@@ -17,7 +17,8 @@ uses each in FastStream's sense. The three below are this package's own.
 
 **Root container**:
 The `Container` handed to `setup_di` and stored on the app's `ContextRepo`; `fetch_di_container`
-reads it back. Its lifetime tracks the app's, reopened on startup and closed after shutdown.
+reads it back. By default its lifetime tracks the app's, reopened on startup and closed after shutdown;
+with `manage_lifespan=False` the user opens and closes it instead.
 _Avoid_: app container, app-scoped container — accurate but unnamed; the code calls it the root
 container, and one of the two names has to win.
 
