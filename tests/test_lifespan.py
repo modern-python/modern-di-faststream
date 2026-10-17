@@ -3,9 +3,10 @@ import typing
 import faststream
 from faststream import TestApp
 from faststream.nats import NatsBroker, TestNatsBroker
+from modern_di import Container
 
-from modern_di_faststream import FromDI, fetch_di_container
-from tests.dependencies import Dependencies, SimpleCreator
+from modern_di_faststream import FromDI, fetch_di_container, setup_di
+from tests.dependencies import Dependencies, Finalizable, SimpleCreator
 
 
 TEST_SUBJECT = "test"
@@ -43,3 +44,54 @@ async def test_startup_reopens_container_across_cycles(app: faststream.FastStrea
         async with TestApp(app):
             assert not container.closed
             await br.publish("test", TEST_SUBJECT)
+
+
+def _unmanaged_app() -> tuple[faststream.FastStream, NatsBroker, Container, list[Finalizable]]:
+    broker = NatsBroker()
+    app = faststream.FastStream(broker)
+    container = setup_di(app, Container(groups=[Dependencies]), manage_lifespan=False)
+    request_instances: list[Finalizable] = []
+
+    @broker.subscriber(TEST_SUBJECT)
+    async def index_subscriber(
+        message: str,
+        app_instance: typing.Annotated[Finalizable, FromDI(Dependencies.app_finalizable)],
+        request_instance: typing.Annotated[Finalizable, FromDI(Dependencies.request_finalizable)],
+    ) -> None:
+        assert message == "test"
+        assert app_instance is container.resolve_provider(Dependencies.app_finalizable)
+        request_instances.append(request_instance)
+
+    return app, broker, container, request_instances
+
+
+async def test_manage_lifespan_false_leaves_the_root_open_after_shutdown() -> None:
+    app, broker, container, _ = _unmanaged_app()
+
+    async with TestNatsBroker(broker) as br, TestApp(app):
+        await br.publish("test", TEST_SUBJECT)
+
+    assert not container.closed
+    assert container.resolve_provider(Dependencies.app_finalizable).finalized == 0
+
+
+async def test_manage_lifespan_false_still_builds_and_closes_the_request_container() -> None:
+    app, broker, _, request_instances = _unmanaged_app()
+
+    async with TestNatsBroker(broker) as br, TestApp(app):
+        await br.publish("test", TEST_SUBJECT)
+
+    assert [instance.finalized for instance in request_instances] == [1]
+
+
+async def test_manage_lifespan_false_lets_the_user_own_the_root() -> None:
+    app, broker, container, _ = _unmanaged_app()
+
+    async with container:
+        async with TestNatsBroker(broker) as br, TestApp(app):
+            await br.publish("test", TEST_SUBJECT)
+        app_instance = container.resolve_provider(Dependencies.app_finalizable)
+        assert app_instance.finalized == 0
+
+    assert container.closed
+    assert app_instance.finalized == 1

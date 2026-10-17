@@ -70,6 +70,8 @@ def fetch_di_container(app_: faststream.FastStream | AsgiFastStream) -> Containe
 def setup_di(
     app: faststream.FastStream | AsgiFastStream,
     container: Container,
+    *,
+    manage_lifespan: bool = True,
 ) -> Container:
     container.add_providers(faststream_message_provider)
     app.context.set_global(_ROOT_CONTAINER_KEY, container)
@@ -84,13 +86,14 @@ def setup_di(
             if middleware_factory not in broker.config.broker_middlewares:
                 broker.add_middleware(middleware_factory)
 
+    app.on_startup(install_middleware)
     # FastStream's lifecycle is callback-based, so the root container can't be
     # wrapped in ``async with``. Reopen it on startup (before the broker consumes)
     # to pair with the shutdown close, so a broker restart works instead of
     # raising ContainerClosedError. Reopening an already-open container is a no-op.
-    app.on_startup(container.open)
-    app.on_startup(install_middleware)
-    app.after_shutdown(container.close_async)
+    if manage_lifespan:
+        app.on_startup(container.open)
+        app.after_shutdown(container.close_async)
     return container
 
 
