@@ -87,13 +87,18 @@ def setup_di(
                 broker.add_middleware(middleware_factory)
 
     app.on_startup(install_middleware)
-    # FastStream's lifecycle is callback-based, so the root container can't be
-    # wrapped in ``async with``. Reopen it on startup (before the broker consumes)
-    # to pair with the shutdown close, so a broker restart works instead of
-    # raising ContainerClosedError. Reopening an already-open container is a no-op.
     if manage_lifespan:
-        app.on_startup(container.open)
-        app.after_shutdown(container.close_async)
+        close_registered = False
+
+        # Appended on startup so the close runs after every after_shutdown hook registered before it.
+        def open_root() -> None:
+            nonlocal close_registered
+            container.open()
+            if not close_registered:
+                app.after_shutdown(container.close_async)
+                close_registered = True
+
+        app.on_startup(open_root)
     return container
 
 
