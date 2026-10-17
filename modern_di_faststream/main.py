@@ -16,8 +16,8 @@ faststream_message_provider = providers.ContextProvider(scope=Scope.REQUEST, con
 # Keys under which the containers live in FastStream's ``ContextRepo``. Each is
 # written in one place and read in another; naming them keeps writer and reader
 # in provable agreement instead of relying on two matching string literals.
-_ROOT_CONTAINER_KEY = "di_container"
-_REQUEST_CONTAINER_KEY = "request_container"
+_ROOT_CONTAINER_KEY = "modern_di_root_container"
+_REQUEST_CONTAINER_KEY = "modern_di_request_container"
 
 _MISSING_REQUEST_CONTAINER = (
     "No request container for this message, so the DI middleware did not run for it. "
@@ -99,7 +99,7 @@ class Dependency(typing.Generic[T_co]):
     marker: integrations.Marker[T_co]
 
     async def __call__(self, context: faststream.ContextRepo) -> T_co:
-        request_container: Container | None = context.get(_REQUEST_CONTAINER_KEY)
+        request_container: Container | None = context.get_local(_REQUEST_CONTAINER_KEY)
         if request_container is None:
             raise RuntimeError(_MISSING_REQUEST_CONTAINER)
         return self.marker.resolve(request_container)

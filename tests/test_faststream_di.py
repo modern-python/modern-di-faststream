@@ -87,6 +87,28 @@ def test_fetch_di_container(app: faststream.FastStream) -> None:
     assert isinstance(di_container, Container)
 
 
+def test_fetch_di_container_ignores_a_user_global_named_di_container() -> None:
+    app_ = faststream.FastStream(NatsBroker())
+    container = modern_di_faststream.setup_di(app_, container=Container(groups=[Dependencies]))
+    app_.context.set_global("di_container", "user value")
+
+    assert modern_di_faststream.fetch_di_container(app_) is container
+
+
+async def test_from_di_ignores_a_user_global_named_request_container() -> None:
+    broker = NatsBroker()
+    app_ = faststream.FastStream(broker)
+    modern_di_faststream.setup_di(app_, container=Container(groups=[Dependencies]))
+    broker.context.set_global("request_container", "user value")
+    resolved: list[SimpleCreator] = []
+    _subscribe_resolving(broker, TEST_SUBJECT, resolved)
+
+    async with TestNatsBroker(broker) as br, TestApp(app_):
+        await br.publish(None, TEST_SUBJECT)
+
+    assert [type(instance) for instance in resolved] == [SimpleCreator]
+
+
 def _app_with_two_brokers(*, add_second_after_setup: bool) -> tuple[faststream.FastStream, NatsBroker, NatsBroker]:
     first, second = NatsBroker(), NatsBroker()
     app_ = faststream.FastStream(first) if add_second_after_setup else faststream.FastStream(first, second)
@@ -151,7 +173,7 @@ def _subscribe_with_from_di(broker: NatsBroker, subject: str) -> None:
 async def test_from_di_without_setup_di_names_the_missing_step() -> None:
     """INVARIANT: ``FromDI`` on a message the DI middleware never saw fails by naming ``setup_di``.
 
-    Broken by handing ``ContextRepo.get``'s ``None`` straight to the marker, which surfaces as
+    Broken by handing ``ContextRepo.get_local``'s ``None`` straight to the marker, which surfaces as
     modern-di's ``AttributeError: 'NoneType' object has no attribute 'resolve_dependency'`` and
     points at nothing in this package.
     """
