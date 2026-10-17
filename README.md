@@ -119,9 +119,10 @@ FastStream's FastAPI routers, such as `faststream.nats.fastapi.NatsRouter`, need
 | `fetch_di_container(app)` | Returns the root container from the app context |
 | `faststream_message_provider` | `ContextProvider` for the current `faststream.StreamMessage` (`REQUEST` scope) |
 
-## 📦 [PyPI](https://pypi.org/project/modern-di-faststream)
+## Links
 
-## 📝 [License](https://github.com/modern-python/modern-di-faststream/blob/main/LICENSE)
+- [PyPI](https://pypi.org/project/modern-di-faststream)
+- [License](https://github.com/modern-python/modern-di-faststream/blob/main/LICENSE)
 
 ## Part of `modern-python`
 
