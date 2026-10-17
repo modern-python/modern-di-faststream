@@ -1,5 +1,7 @@
 import typing
+from unittest import mock
 
+import anyio.to_thread
 import faststream
 import pytest
 from faststream import TestApp
@@ -31,6 +33,26 @@ async def test_factories(app: faststream.FastStream) -> None:
 
     async with TestNatsBroker(broker) as br, TestApp(app):
         await br.publish("test", TEST_SUBJECT)
+
+
+async def test_from_di_resolves_without_a_worker_thread(
+    app: faststream.FastStream, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broker = typing.cast(NatsBroker, app.broker)
+    resolved: list[SimpleCreator] = []
+
+    @broker.subscriber(TEST_SUBJECT)
+    async def index_subscriber(instance: typing.Annotated[SimpleCreator, FromDI(SimpleCreator)]) -> None:
+        resolved.append(instance)
+
+    run_sync = mock.Mock(wraps=anyio.to_thread.run_sync)
+    async with TestNatsBroker(broker) as br, TestApp(app):
+        monkeypatch.setattr(anyio.to_thread, "run_sync", run_sync)
+        await br.publish(None, TEST_SUBJECT)
+        monkeypatch.undo()
+
+    assert [type(instance) for instance in resolved] == [SimpleCreator]
+    assert run_sync.call_count == 0
 
 
 async def test_context_adapter(app: faststream.FastStream) -> None:

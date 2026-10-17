@@ -1,3 +1,4 @@
+import contextvars
 import dataclasses
 import typing
 from collections.abc import Awaitable, Callable
@@ -13,11 +14,10 @@ T_co = typing.TypeVar("T_co", covariant=True)
 
 faststream_message_provider = providers.ContextProvider(scope=Scope.REQUEST, context_type=faststream.StreamMessage)
 
-# Keys under which the containers live in FastStream's ``ContextRepo``. Each is
-# written in one place and read in another; naming them keeps writer and reader
-# in provable agreement instead of relying on two matching string literals.
 _ROOT_CONTAINER_KEY = "modern_di_root_container"
-_REQUEST_CONTAINER_KEY = "modern_di_request_container"
+_request_container: contextvars.ContextVar[Container | None] = contextvars.ContextVar(
+    "modern_di_request_container", default=None
+)
 
 _MISSING_REQUEST_CONTAINER = (
     "No request container for this message, so the DI middleware did not run for it. "
@@ -56,11 +56,14 @@ class _DiMiddleware(faststream.BaseMiddleware):
         async with self.di_container.build_child_container(
             scope=match.scope, context=match.context
         ) as request_container:
-            with self.context.scope(_REQUEST_CONTAINER_KEY, request_container):
+            token = _request_container.set(request_container)
+            try:
                 return typing.cast(
                     typing.AsyncIterator[DecodedMessage],
                     await call_next(msg),
                 )
+            finally:
+                _request_container.reset(token)
 
 
 def fetch_di_container(app_: faststream.FastStream | AsgiFastStream) -> Container:
@@ -79,7 +82,7 @@ def setup_di(
 
     # Installed on startup rather than here so a broker added after ``setup_di`` is covered,
     # and skipped where present so a restart adds no second copy: docs/adr/0002-install-middleware-on-startup.md
-    def install_middleware() -> None:
+    async def install_middleware() -> None:
         if not app.brokers:
             raise RuntimeError(_NO_BROKER_AT_STARTUP)
         for broker in app.brokers:
@@ -91,7 +94,7 @@ def setup_di(
         close_registered = False
 
         # Appended on startup so the close runs after every after_shutdown hook registered before it.
-        def open_root() -> None:
+        async def open_root() -> None:
             nonlocal close_registered
             container.open()
             if not close_registered:
@@ -106,8 +109,8 @@ def setup_di(
 class Dependency(typing.Generic[T_co]):
     marker: integrations.Marker[T_co]
 
-    async def __call__(self, context: faststream.ContextRepo) -> T_co:
-        request_container: Container | None = context.get_local(_REQUEST_CONTAINER_KEY)
+    async def __call__(self) -> T_co:
+        request_container = _request_container.get()
         if request_container is None:
             raise RuntimeError(_MISSING_REQUEST_CONTAINER)
         return self.marker.resolve(request_container)

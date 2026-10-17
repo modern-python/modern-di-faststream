@@ -1,6 +1,8 @@
 import typing
 from collections.abc import Callable
+from unittest import mock
 
+import anyio.to_thread
 import faststream
 import pytest
 from faststream import TestApp
@@ -146,3 +148,16 @@ async def test_after_shutdown_hook_registered_after_setup_di_sees_the_open_root(
         assert [(instance.finalized, at_hook) for instance, at_hook in seen] == [(1, 0)] * cycle
         assert container.closed
         assert container.close_calls == cycle
+
+
+async def test_startup_and_shutdown_run_no_worker_thread(
+    app: faststream.FastStream, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_sync = mock.Mock(wraps=anyio.to_thread.run_sync)
+    monkeypatch.setattr(anyio.to_thread, "run_sync", run_sync)
+    broker = typing.cast(NatsBroker, app.broker)
+
+    async with TestNatsBroker(broker), TestApp(app):
+        pass
+
+    assert run_sync.call_count == 0
