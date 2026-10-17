@@ -85,7 +85,7 @@ async def main() -> None:
         await app.run()
 ```
 
-When several apps share one container, exactly one of them should own its lifespan, or the first app to stop closes the container for the rest.
+When several apps share one container, pass `manage_lifespan=False` to every one of them and open and close the container yourself, as above. APP-scoped finalizers then run once, when your `async with` block exits. An app left at the default closes the container when it stops, while the other apps may still be handling work. See [FastAPI and FastStream sharing a container](https://modern-di.modern-python.org/recipes/shared-container/).
 
 ## API
 
