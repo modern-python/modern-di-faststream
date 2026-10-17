@@ -87,6 +87,29 @@ async def main() -> None:
 
 When several apps share one container, pass `manage_lifespan=False` to every one of them and open and close the container yourself, as above. APP-scoped finalizers then run once, when your `async with` block exits. An app left at the default closes the container when it stops, while the other apps may still be handling work. See [FastAPI and FastStream sharing a container](https://modern-di.modern-python.org/recipes/shared-container/).
 
+### Running a broker inside another framework's lifespan
+
+`setup_di` takes a `FastStream` or `AsgiFastStream` app. To run a broker inside another framework's lifespan, such as FastAPI's, wrap it in `FastStream(broker)` and start and stop that app from the lifespan:
+
+```python
+stream = faststream.FastStream(broker)
+setup_di(stream, container, manage_lifespan=False)
+
+
+@contextlib.asynccontextmanager
+async def lifespan(_: fastapi.FastAPI) -> AsyncIterator[None]:
+    async with container:
+        await stream.start()
+        try:
+            yield
+        finally:
+            await stream.stop()
+```
+
+`stream.start()` runs the `on_startup` hooks, where `setup_di` installs its middleware. `start()` and `stop()` do not run a `FastStream(lifespan=...)`. The [shared container recipe](https://modern-di.modern-python.org/recipes/shared-container/#starting-faststream-inside-the-fastapi-lifespan) has the full example.
+
+FastStream's FastAPI routers, such as `faststream.nats.fastapi.NatsRouter`, need only modern-di-fastapi: its `FromDI` resolves in router subscribers.
+
 ## API
 
 | Symbol | Description |
