@@ -1,8 +1,10 @@
 import contextvars
 import dataclasses
+import logging
 import typing
 from collections.abc import Awaitable, Callable
 
+import anyio
 import faststream
 from faststream.asgi import AsgiFastStream
 from faststream.types import DecodedMessage
@@ -18,6 +20,8 @@ _ROOT_CONTAINER_KEY = "modern_di_root_container"
 _request_container: contextvars.ContextVar[Container | None] = contextvars.ContextVar(
     "modern_di_request_container", default=None
 )
+_CHILD_CLOSE_TIMEOUT = 10.0
+_logger = logging.getLogger(__name__)
 
 _MISSING_REQUEST_CONTAINER = (
     "No request container for this message, so the DI middleware did not run for it. "
@@ -53,17 +57,22 @@ class _DiMiddleware(faststream.BaseMiddleware):
         msg: faststream.StreamMessage[typing.Any],
     ) -> typing.AsyncIterator[DecodedMessage]:
         match = integrations.bind(faststream_message_provider, msg)
-        async with self.di_container.build_child_container(
-            scope=match.scope, context=match.context
-        ) as request_container:
-            token = _request_container.set(request_container)
-            try:
-                return typing.cast(
-                    typing.AsyncIterator[DecodedMessage],
-                    await call_next(msg),
+        request_container = self.di_container.build_child_container(scope=match.scope, context=match.context)
+        token = _request_container.set(request_container)
+        try:
+            return typing.cast(
+                typing.AsyncIterator[DecodedMessage],
+                await call_next(msg),
+            )
+        finally:
+            _request_container.reset(token)
+            with anyio.move_on_after(_CHILD_CLOSE_TIMEOUT, shield=True) as close_scope:
+                await request_container.close_async()
+            if close_scope.cancel_called:
+                _logger.warning(
+                    "Closing the request container did not finish within %s s; its remaining finalizers did not run",
+                    _CHILD_CLOSE_TIMEOUT,
                 )
-            finally:
-                _request_container.reset(token)
 
 
 def fetch_di_container(app_: faststream.FastStream | AsgiFastStream) -> Container:
