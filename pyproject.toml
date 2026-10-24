@@ -41,13 +41,10 @@ lint = [
     "ty",
     "ruff",
     "eof-fixer",
-    # Both floors are pydantic wheel coverage, reached through the one resolution uv
-    # runs over every group: floored lower, typing-extensions holds pydantic back to a
-    # build whose pydantic-core ships no wheel for the interpreter. pydantic needs
-    # 4.12.2 from 3.13, and 2.12 — the first release with a cp314 pydantic-core —
-    # needs 4.14.1.
-    "typing-extensions>=4.12.2; python_version < '3.14'",
-    "typing-extensions>=4.14.1; python_version >= '3.14'",
+    # pydantic wheel coverage, reached through the one resolution uv runs over every group:
+    # pydantic needs 4.12.2 from 3.13, and floored lower, typing-extensions holds it back to a
+    # build whose pydantic-core ships no cp313 wheel.
+    "typing-extensions>=4.12.2",
 ]
 
 [build-system]
