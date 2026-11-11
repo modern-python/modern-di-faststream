@@ -124,6 +124,8 @@ FastStream's FastAPI routers, such as `faststream.nats.fastapi.NatsRouter`, need
 - [PyPI](https://pypi.org/project/modern-di-faststream)
 - [License](https://github.com/modern-python/modern-di-faststream/blob/main/LICENSE)
 
+If this project saves you time, consider giving it a star on GitHub.
+
 ## Part of `modern-python`
 
 Built on [`modern-di`](https://github.com/modern-python/modern-di), a dependency-injection framework with an IoC container and scopes.
